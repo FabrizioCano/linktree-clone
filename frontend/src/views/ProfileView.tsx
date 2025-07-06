@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import ErrorMessage from "../components/ErrorMessage";
 import { useQueryClient,useMutation } from "@tanstack/react-query";
 import type { User, UserProfileForm } from "../types";
-import { updateProfile } from "../api/devtreeApi";
+import { updateProfile, uploadImage } from "../api/devtreeApi";
 import { toast } from "sonner";
 export default function ProfileView() {
 
@@ -10,6 +10,7 @@ export default function ProfileView() {
     const queryClient = useQueryClient();
     const data: User =queryClient.getQueryData(['user'])!;
 
+    //instancia de useForm para manejar formularios
     const { register, handleSubmit, formState: { errors } } = useForm<UserProfileForm>({
         defaultValues: {
             handle: data.handle,
@@ -19,17 +20,51 @@ export default function ProfileView() {
 
     const updateProfileMutation = useMutation({
         mutationFn:updateProfile,
-        onError:()=> {
-            toast.error("Error al actualizar el perfil");
+        onError:(error)=> {
+            toast.error(error.message);
         },
-        onSuccess: () => {
-            toast.success("Perfil actualizado correctamente");
+        onSuccess: (data) => {
+            toast.success(data);
+            //se invalida la query del usuario para que se vuelva a obtener el usuario actualizado
+            queryClient.invalidateQueries({
+                queryKey: ['user']
+            })
         }
     })
+
+
+    const uploadImageMutation = useMutation({
+        mutationFn:uploadImage,
+        onError:(error)=> {
+            toast.success(error.message)
+        },
+        onSuccess: (data) => {
+           toast.success(data)
+           //actualizaciones optimistas, setqueryData actualiza los datos en cache
+            queryClient.setQueryData(['user'],
+                (previousData:User) => {
+                    //se mantiene los datos cacheados con ...previous data y se actualiza la imagen
+                    return {
+                        ...previousData,
+                        image:data.image
+                    }
+                }
+            )
+        }
+    })
+
+    const handleImageChange = (e:React.ChangeEvent<HTMLInputElement>) => {
+        if(e.target.files) {
+            uploadImageMutation.mutate(e.target.files[0])
+        }
+    }
     //handleUserProfileForm recibe el formulario y lo envia a la api para actualizar el perfil
     //se utiliza el hook useMutation de react-query para manejar la mutacion
     const handleUserProfileForm = (formData:UserProfileForm)=>{
-        updateProfileMutation.mutate(formData)
+        const user:User=queryClient.getQueryData(['user'])!
+        user.description=formData.description
+        user.handle=formData.handle
+        updateProfileMutation.mutate(user)
     }
 
 
@@ -81,7 +116,7 @@ export default function ProfileView() {
                     name="handle"
                     className="border-none bg-slate-100 rounded-lg p-2"
                     accept="image/*"
-                    onChange={() => { }}
+                    onChange={(handleImageChange)}
                 />
             </div>
 

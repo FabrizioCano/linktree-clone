@@ -1,10 +1,12 @@
 import { json, RequestHandler } from 'express';
 import { check, validationResult } from 'express-validator';
 import slug from 'slug';
+import formidable from 'formidable'
+import { v4 as uuid } from 'uuid'
 import User from "../models/User"
 import { checkPassword, hashPassword } from "../utils/auth"
 import { generateJWT } from '../utils/jwt';
-
+import cloudinary from '../config/cloudinary';
 export const createAccount: RequestHandler = async (req, res) => {
 
   const { email, password } = req.body;
@@ -57,7 +59,7 @@ export const getUser: RequestHandler = async (req, res) => {
 
 export const updateProfile: RequestHandler = async (req, res) => {
   try {
-    const { description } = req.body;
+    const { description,links } = req.body;
     const handle = slug(req.body.handle, '')
     const handleExists = await User.findOne({ handle });
     if (handleExists && handleExists.email !== req.user.email) {
@@ -67,11 +69,41 @@ export const updateProfile: RequestHandler = async (req, res) => {
     //actualizar el handle y la descripcion del usuario autenticado
     req.user.description = description;
     req.user.handle = handle;
+    req.user.links=links
     await req.user.save();
     res.send('Perfil actualizado correctamente');
 
   } catch (e) {
     const error = new Error('Error al actualizar el perfil');
+    res.status(500).json({ error: error.message });
+  }
+}
+
+export const uploadImage: RequestHandler = async (req, res) => {
+  //configurar las caracteristicas de upload de la imagen
+  const form = formidable({
+    multiples: false
+  })
+
+  try {
+    form.parse(req, (error, fields, files) => {
+      cloudinary.uploader.upload(files.file[0].filepath, { public_id: uuid() }, async function (error, result) {
+        if (error) {
+          const error = new Error('Hubo un error al subir la imagen')
+          res.status(500).json({ error: error.message })
+        }
+
+        if (result) {
+          req.user.image=result.secure_url
+          await req.user.save()
+          res.json({image:result.secure_url})
+        }
+      })
+    })
+
+
+  } catch (e) {
+    const error = new Error('Error al subir la imagen');
     res.status(500).json({ error: error.message });
   }
 }
