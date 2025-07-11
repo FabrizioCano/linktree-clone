@@ -1,55 +1,61 @@
-import {Router} from 'express'
-import {body} from 'express-validator'
-import {createAccount, getUser, login, updateProfile, uploadImage} from './handlers'
+import { Router } from 'express'
+import { body } from 'express-validator'
+import { createAccount, getUser, getUserByHandle, login, searchByHandle, updateProfile, uploadImage } from './handlers'
 import { handleInputErrors } from './middleware/validation'
 import { authenticate } from './middleware/auth'
 
-const router=Router()
+const router = Router()
 
-/* Autenticacion */
-router.post('/auth/register', 
+/** Autenticacion y Registro */
+router.post('/auth/register',
     body('handle')
         .notEmpty()
-        .withMessage('El handle es obligatorio, no puede estar vacío'),
+        .withMessage('El handle no puede ir vacio'),
     body('name')
         .notEmpty()
-        .withMessage('El nombre es obligatorio, no puede estar vacío'),
+        .withMessage('El Nombre no puede ir vacio'),
     body('email')
         .isEmail()
-        .withMessage('Email no valido'),
+        .withMessage('E-mail no válido'),
     body('password')
-        .isLength({min: 8})
-        .withMessage('La contraseña es muy corta, debe tener al menos 8 caracteres'),
-        handleInputErrors,
-    createAccount)
+        .isLength({ min: 8 })
+        .withMessage('El Password es muy corto, mínimo 8 caracteres'),
+    handleInputErrors,
+    createAccount
+)
 
-//inicio de sesion
 router.post('/auth/login',
     body('email')
         .isEmail()
-        .withMessage('Email no valido'),
-        body('password')
+        .withMessage('E-mail no válido'),
+    body('password')
         .notEmpty()
-        .withMessage('La contraseña es obligatoria'),
-        handleInputErrors,
+        .withMessage('El Password es obligatorio'),
+    handleInputErrors,
     login
 )
-//obtener informacion del usuario autenticado
-//se utiliza el middleware authenticate para verificar el token de autenticacion
-router.get('/user',authenticate,getUser)
+
+router.get('/user', authenticate, getUser)
+
 router.patch('/user',
     body('handle')
         .notEmpty()
-        .withMessage('El handle es obligatorio, no puede estar vacío'),
-    body('description')
-        .notEmpty()
-        .withMessage('La descripcion es obligatoria, no puede estar vacía'),
+        .withMessage('El handle no puede ir vacio'),
     handleInputErrors,
     authenticate,
-    updateProfile)
+    updateProfile
+)
 
-//subir imagen de perfil
-router.post('/user/image',authenticate,uploadImage)
+router.post('/user/image', authenticate, uploadImage)
 
+router.get('/:handle', getUserByHandle)
+
+router.post('/search',
+    body('handle')
+        .notEmpty()
+        .withMessage('El handle no puede ir vacio'),
+    handleInputErrors,
+    searchByHandle
+)
 
 export default router

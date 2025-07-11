@@ -8,8 +8,9 @@ export default function AppLayout() {
     const { data, isLoading, isError } = useQuery({
         queryFn: getUser,
         queryKey: ['user'],
-        retry: 1,
+        retry: 2,
         refetchOnWindowFocus: false,
+        refetchOnMount: true,
     })
 
     if (isLoading) {
@@ -19,7 +20,7 @@ export default function AppLayout() {
     if (isError) {
         return <Navigate to={"/auth/login"} />
     }
-    console.log(data)
+   
 
     if (data)
         return (
